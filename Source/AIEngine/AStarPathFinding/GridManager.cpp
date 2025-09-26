@@ -23,7 +23,7 @@ bool AGridManager::StaticIsValidPos(int32 X, int32 Y, int32 GridSizeX, int32 Gri
 	return false;
 }
 
-int32 AGridManager::StaticGetIndexFromXY(int32 X, int32 Y, int32 GridSizeX, int32 GridSizeY)
+int32 AGridManager::StaticGetIndexFromXY(int32 X, int32 Y, int32 GridSizeX)
 {
 	return int32();
 }

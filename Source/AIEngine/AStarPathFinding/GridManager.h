@@ -12,7 +12,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPathUpdated, const TArray<FVecto
 struct FGridNode;
 class AGridNodeActorBase;
 UCLASS()
-class AI_ENGINE_API AGridManager : public AActor
+class AIENGINE_API AGridManager : public AActor
 {
 	GENERATED_BODY()
 
@@ -21,7 +21,7 @@ public:
 
 
 	static bool StaticIsValidPos(int32 X, int32 Y, int32 GridSizeX, int32 GridSizeY);
-	static int32 StaticGetIndexFromXY(int32 X, int32 Y, int32 GridSizeX, int32 GridSizeY);
+	static int32 StaticGetIndexFromXY(int32 X, int32 Y, int32 GridSizeX);
 
 
 	// Grid Delegates

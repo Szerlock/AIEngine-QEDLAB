@@ -9,8 +9,7 @@
  *
  */
 
-class FGridNode;
-class AI_ENGINE_API AStarPathFinding
+class AIENGINE_API AStarPathFinding
 {
 
 public:
@@ -33,7 +32,7 @@ public:
     };
 
     static TArray<FVector> ComputePath(
-        const FGridNode& Grid,
+        const TArray<FGridNode>& Grid,
         int32 GridSizeX,
         int32 GridSizeY,
         int32 StartX,
@@ -61,7 +60,8 @@ private:
         int32 StartX,
         int32 StartY,
         int32 GoalX,
-        int32 GoalY
+        int32 GoalY,
+        int32 GridSizeX
     );
 
     // Pathfinding Methods
@@ -73,7 +73,7 @@ private:
         const TPair<int32, int32>& Direction,
         FPathNode* CurrentNode,
         TArray<FPathNode>& PathNodes,
-        const TArray<FGridNode*>& Grid,
+        const TArray<FGridNode>& Grid,
         int32 GridSizeX,
         int32 GridSizeY,
         int32 GoalX,
@@ -82,7 +82,7 @@ private:
     );
 
     static void UpdateNeighborNode(
-        FPathNode* NeighborNode,
+        FPathNode& NeighborNode,
         FPathNode* CurrentNode,
         int32 NewCostFromStart,
         int32 GoalX,
@@ -94,7 +94,7 @@ private:
 
     static int32 CalculateDistanceToGoal(int32 FromX, int32 FromY, int32 GoalX, int32 GoalY);
 
-    static void IsNodeCrossable(const TArray<FGridNode>& Grid, int32 GridSizeX, int32 GridSizeY, int32 X, int32 Y);
+    static bool IsNodeCrossable(const TArray<FGridNode>& Grid, int32 GridSizeX, int32 GridSizeY, int32 X, int32 Y);
 
-    static TArray<FVector> ReconstructPath(FPathNode* GoalNode, float CellSize);
+    static TArray<FVector> ReconstructPath(FPathNode* EndNode, float CellSize);
 };
