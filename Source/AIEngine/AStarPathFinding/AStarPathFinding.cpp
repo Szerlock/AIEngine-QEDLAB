@@ -127,8 +127,7 @@ AStarPathFinding::FPathNode* AStarPathFinding::FindNodeWithLowestCost(TArray<FPa
 
 bool AStarPathFinding::IsGoalNode(const FPathNode* Node, int32 GoalX, int32 GoalY)
 {
-	if(Node->X == GoalX && Node->Y == GoalY)
-	return false;
+	return Node->X == GoalX && Node->Y == GoalY;
 }
 
 bool AStarPathFinding::ProcessNeighborNode(const TPair<int32, int32>& Direction, FPathNode* CurrentNode, TArray<FPathNode>& PathNodes, const TArray<FGridNode>& Grid, int32 GridSizeX, int32 GridSizeY, int32 GoalX, int32 GoalY, TArray<FPathNode*>& NodesToExplore)
