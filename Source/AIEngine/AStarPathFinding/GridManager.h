@@ -10,6 +10,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGridChanged);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPathUpdated, const TArray<FVector>&, Path, const TArray<FVector>&, ExploredNodes);
 
 struct FGridNode;
+class AGridNodeActorBase;
 UCLASS()
 class AI_ENGINE_API AGridManager : public AActor
 {

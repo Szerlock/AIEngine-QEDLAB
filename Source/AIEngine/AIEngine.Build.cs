@@ -37,7 +37,8 @@ public class AIEngine : ModuleRules
 			"AIEngine/Variant_SideScrolling/AI",
 			"AIEngine/Variant_SideScrolling/Gameplay",
 			"AIEngine/Variant_SideScrolling/Interfaces",
-			"AIEngine/Variant_SideScrolling/UI"
+			"AIEngine/Variant_SideScrolling/UI",
+			"AIEngine/AStarPathFinding"
 		});
 
 		// Uncomment if you are using Slate UI
