@@ -76,7 +76,7 @@ void AGridNodeActorBase::SetupNodeColor(EGridActorType Type, ENodeState State)
 
 }
 
-void AGridNodeActorBase::UpdatePathFindingColor(ENodeState State)
+void AGridNodeActorBase::UpdatePathFindingNodeColor(ENodeState State)
 {
     if (NodeType == EGridActorType::Wall)
     {

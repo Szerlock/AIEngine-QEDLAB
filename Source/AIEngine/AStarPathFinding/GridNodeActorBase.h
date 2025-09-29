@@ -56,7 +56,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Grid")
 	void SetupNodeColor(EGridActorType Type, ENodeState State = ENodeState::Default);
 
-	void UpdatePathFindingColor(ENodeState State);
+	void UpdatePathFindingNodeColor(ENodeState State);
 
 private:
 	UPROPERTY()

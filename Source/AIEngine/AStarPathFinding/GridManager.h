@@ -4,13 +4,15 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "GridNodeActorBase.h"
+#include "NodeActors/PathNodeActor.h"
 #include "GridManager.generated.h"
+
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGridChanged);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPathUpdated, const TArray<FVector>&, Path, const TArray<FVector>&, ExploredNodes);
 
 struct FGridNode;
-class AGridNodeActorBase;
 UCLASS()
 class AIENGINE_API AGridManager : public AActor
 {
@@ -66,7 +68,7 @@ public:
 	// Grid Methods
 	// Implement all this in C++ instaed of BP
 	UFUNCTION(BlueprintCallable, Category = "Grid")
-	FVector GetWorldPositionFromXY(int32 X, int32 Y) const;
+	FVector GetWorldPositionFromCell(int32 X, int32 Y) const;
 
 	UFUNCTION(BlueprintCallable, Category = "Grid")
 	bool GetCellFromWorldPosition(const FVector& WorldPosition, int32& OutX, int32& OutY) const;
@@ -100,7 +102,7 @@ private:
 
 	int32 LastHighlightedNodeX;
 	int32 LastHighlightedNodeY;
-	bool bHasLastHighlightedNode;
+	bool bHasHighlightedNode;
 
 	/// Node Fields
 	UPROPERTY()
@@ -125,7 +127,7 @@ private:
 	// Grid Helper Methods
 	int32 GetIndexFromXY(int32 X, int32 Y) const;
 	bool IsValidPos(int32 X, int32 Y) const;
-	FGridNode* GetNodeAt(int32 X, int32 Y);
+	FGridNode& GetNode(int32 X, int32 Y);
 	bool IsNodeAlreadyHighlighted(int32 X, int32 Y) const;
 	void UpdateHighlightedCell(int32 X, int32 Y);
 	AGridNodeActorBase* GetNodeActorAtCell(int32 X, int32 Y) const;
@@ -134,7 +136,7 @@ private:
 	void RemoveExistingNodeActorAtCell(int32 X, int32 Y);
 	AGridNodeActorBase* SpawnNodeActorAtCell(TSubclassOf<AGridNodeActorBase> ActorClass, int32 X, int32 Y);
 
-	void SpawnPathNodes(int32 X, int32 Y, bool bisFinalPath);
+	void SpawnPathNode(int32 X, int32 Y, bool bisFinalPath);
 	void ClearPathNodes();
 
 	void UpdatePathFinding();
