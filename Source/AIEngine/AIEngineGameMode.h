@@ -4,20 +4,43 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "GridManager.h"
 #include "AIEngineGameMode.generated.h"
 
 /**
  *  Simple GameMode for a third person game
  */
-UCLASS(abstract)
+UCLASS(minimalapi)
 class AAIEngineGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 
+
 public:
-	
-	/** Constructor */
 	AAIEngineGameMode();
+	virtual void BeginPlay() override;
+	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
+
+protected:
+	//////// FIELDS ////////
+	UPROPERTY()
+	AGridManager* GridManager;
+
+	//////// METHODS ////////
+	//// Delegates methods
+	UFUNCTION()
+	void OnGridStateChanged();
+
+	UFUNCTION()
+	void OnPathReCalculated(const TArray<FVector>& Path, const TArray<FVector>& ExploredNodes);
+
+private:
+	//////// METHODS ////////
+	//// Grid methods
+	void InitializeGrid();
+
+	UPROPERTY()
+	TSubclassOf<AGridManager> GridManagerClass;
 };
 
 
