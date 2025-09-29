@@ -42,7 +42,6 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Grid|Settings")
 	int32 CellSize;
 
-
 	// Interaction Fields
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Interaction Settings")
@@ -85,6 +84,8 @@ public:
 	// Nodes Methods
 	UFUNCTION(BlueprintCallable, Category = "Node")
 	bool ToggleNodeActorInGrid(const FVector& WorldPosition);
+
+	void PlaceNode();
 
 protected:
 	virtual void BeginPlay() override;

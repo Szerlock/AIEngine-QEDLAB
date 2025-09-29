@@ -39,8 +39,8 @@ void AGridManager::DrawDebugCell(int32 X, int32 Y, FColor Color, float Duration)
 	}
 
 	FVector BoxPos = GetWorldPositionFromCell(X, Y);
-	BoxPos += FVector(0.0f, 0.0f, CellSize * 0.5f);
-	FVector BoxExtent = FVector(CellSize * 0.45f, CellSize * 0.45f, CellSize * 50.f);
+	BoxPos += FVector(0.0f + .5f, 0.0f + .5f, CellSize * 0.5f);
+	FVector BoxExtent = FVector(CellSize * 0.45f, CellSize * 0.45f, CellSize * .5f);
 
 	DrawDebugBox(GetWorld(), BoxPos, BoxExtent, Color, false, Duration);
 	
@@ -61,12 +61,12 @@ EGridActorType AGridManager::GetNodeTypeAtPosition(const FVector& WorldPosition)
 		return EGridActorType::None;
 	}
 
-	if(StartNode && StartNode->GridX && StartNode->GridY)
+	if (StartNode && StartNode->GridX == GridX && StartNode->GridY == GridY)
 	{
 		return EGridActorType::Start;
 	}
 
-	if(GoalNode && GoalNode->GridX && GoalNode->GridY)
+	if (GoalNode && GoalNode->GridX == GridX && GoalNode->GridY == GridY)
 	{
 		return EGridActorType::Goal;
 	}
@@ -87,6 +87,10 @@ bool AGridManager::GetCellFromWorldPosition(const FVector& WorldPosition, int32&
 	return IsValidPos(OutX, OutY);
 }
 
+void AGridManager::PlaceNode()
+{
+	ToggleNodeActorInGrid(GetHighlightedCellWorldPosition());
+}
 
 bool AGridManager::ToggleNodeActorInGrid(const FVector& WorldPosition)
 {
@@ -156,7 +160,7 @@ void AGridManager::BeginPlay()
 {
 	Super::BeginPlay();
 	GridOrigin = GetActorLocation();
-	GridOrigin = FVector::ZeroVector;
+	GridOrigin = FVector::ZeroVector;	
 	Initialize();
 	DrawGrid();
 }

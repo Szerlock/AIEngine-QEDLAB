@@ -94,7 +94,7 @@ private:
 
     static int32 CalculateDistanceToGoal(int32 FromX, int32 FromY, int32 GoalX, int32 GoalY);
 
-    static bool IsNodeCrossable(const TArray<FGridNode>& Grid, int32 GridSizeX, int32 GridSizeY, int32 X, int32 Y);
+    static bool IsNodeCrossable(const TArray<FGridNode>& Grid, int32 GridSizeX, int32 X, int32 Y);
 
     static TArray<FVector> ReconstructPath(FPathNode* EndNode, float CellSize);
 };

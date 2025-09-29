@@ -5,13 +5,13 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
+#include "GridManager.h"
 #include "AIEngineCharacter.generated.h"
 
 class USpringArmComponent;
 class UCameraComponent;
 class UInputAction;
 struct FInputActionValue;
-
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
 
 /**
@@ -29,14 +29,9 @@ class AAIEngineCharacter : public ACharacter
 
 	/** Follow camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
-	UCameraComponent* FollowCamera;
+	UCameraComponent* TopDownCameraComponent;
 	
 protected:
-
-	/** Jump Input Action */
-	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* JumpAction;
-
 	/** Move Input Action */
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* MoveAction;
@@ -48,11 +43,33 @@ protected:
 	/** Mouse Look Input Action */
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputAction* MouseLookAction;
+	
+	UPROPERTY(EditAnywhere, Category="Input")
+	UInputAction* SelectStartNode;
+
+	UPROPERTY(EditAnywhere, Category="Input")
+	UInputAction* SelectGoalNode;
+
+	UPROPERTY(EditAnywhere, Category="Input")
+	UInputAction* SelectWallNode;
+	
+	UPROPERTY(EditAnywhere, Category="Input")
+	UInputAction* PlaceNode;
+
+	void OnSelectStartNode();
+	void OnSelectGoalNode();
+	void OnSelectWallNode();
+	void OnPlaceNode();
+
+	UPROPERTY(EditAnywhere)
+	AGridManager* GridManager;
 
 public:
 
 	/** Constructor */
 	AAIEngineCharacter();	
+
+	void SetGridManager(AGridManager* NewGridManager) { GridManager = NewGridManager; }
 
 protected:
 
@@ -77,20 +94,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoLook(float Yaw, float Pitch);
 
-	/** Handles jump pressed inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	virtual void DoJumpStart();
-
-	/** Handles jump pressed inputs from either controls or UI interfaces */
-	UFUNCTION(BlueprintCallable, Category="Input")
-	virtual void DoJumpEnd();
-
 public:
 
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 
 	/** Returns FollowCamera subobject **/
-	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return TopDownCameraComponent; }
 };
 

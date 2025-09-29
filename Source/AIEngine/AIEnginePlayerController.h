@@ -20,6 +20,8 @@ class AAIEnginePlayerController : public APlayerController
 	
 protected:
 
+	AAIEnginePlayerController();
+
 	/** Input Mapping Contexts */
 	UPROPERTY(EditAnywhere, Category ="Input|Input Mappings")
 	TArray<UInputMappingContext*> DefaultMappingContexts;

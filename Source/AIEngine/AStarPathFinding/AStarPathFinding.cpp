@@ -14,7 +14,7 @@ TArray<FVector> AStarPathFinding::ComputePath(const TArray<FGridNode>& Grid, int
 {
 	OutExploredNodes.Empty();
 
-	if (ValidateInputs(StartX, StartY, GoalX, GoalY, GridSizeX, GridSizeY))
+	if (!ValidateInputs(StartX, StartY, GoalX, GoalY, GridSizeX, GridSizeY))
 	{
 		return TArray<FVector>(); // Invalid path so return empty path
 	}
@@ -30,7 +30,7 @@ TArray<FVector> AStarPathFinding::ComputePath(const TArray<FGridNode>& Grid, int
 
 	while (!NodesToExplore.IsEmpty())
 	{
-		if (IterationCount >= MaxIterations)
+		if (++IterationCount > MaxIterations)
 		{
 			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("PathFinder : Maximum iterations reached, path not found"));
 			return TArray<FVector>(); // return empty path
@@ -135,7 +135,8 @@ bool AStarPathFinding::ProcessNeighborNode(const TPair<int32, int32>& Direction,
 	const int32 NeighborX = CurrentNode->X + Direction.Key;
 	const int32 NeighborY = CurrentNode->Y + Direction.Value;
 
-	if (!AGridManager::StaticIsValidPos(NeighborX, NeighborY, GridSizeX, GridSizeY))
+	if (!AGridManager::StaticIsValidPos(NeighborX, NeighborY, GridSizeX, GridSizeY) ||
+		!IsNodeCrossable(Grid, GridSizeX, NeighborX, NeighborY))
 	{
 		return false;
 	}
@@ -188,7 +189,7 @@ int32 AStarPathFinding::CalculateDistanceToGoal(int32 FromX, int32 FromY, int32 
 	return STRAIGHT_COST * (DeltaX + DeltaY);
 }
 
-bool AStarPathFinding::IsNodeCrossable(const TArray<FGridNode>& Grid, int32 GridSizeX, int32 GridSizeY, int32 X, int32 Y)
+bool AStarPathFinding::IsNodeCrossable(const TArray<FGridNode>& Grid, int32 GridSizeX, int32 X, int32 Y)
 {
 	if (!AGridManager::StaticGetIndexFromXY(X, Y, GridSizeX))
 	{

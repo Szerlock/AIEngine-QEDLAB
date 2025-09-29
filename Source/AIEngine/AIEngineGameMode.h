@@ -19,7 +19,6 @@ class AAIEngineGameMode : public AGameModeBase
 public:
 	AAIEngineGameMode();
 	virtual void BeginPlay() override;
-	virtual AActor* ChoosePlayerStart_Implementation(AController* Player) override;
 
 protected:
 	//////// FIELDS ////////
@@ -39,7 +38,7 @@ private:
 	//// Grid methods
 	void InitializeGrid();
 
-	UPROPERTY()
+	UPROPERTY(EditAnywhere)
 	TSubclassOf<AGridManager> GridManagerClass;
 };
 
