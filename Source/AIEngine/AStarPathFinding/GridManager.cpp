@@ -4,6 +4,7 @@
 #include "GridManager.h"
 #include "DrawDebugHelpers.h"
 #include "AStarPathFinding.h"
+#include "AStarPathFinding/NodeACtors/NodePooling.h"
 
 AGridManager::AGridManager()
 	: GridSizeX(DEFAULT_GRID_SIZE)
@@ -114,25 +115,32 @@ bool AGridManager::ToggleNodeActorInGrid(const FVector& WorldPosition)
 	RemoveExistingNodeActorAtCell(GridX, GridY);
 	GetNode(GridX, GridY).IsCrossable = true;
 
-	TSubclassOf<AGridNodeActorBase> ClassToSpawn = nullptr;
+	//TSubclassOf<AGridNodeActorBase> ClassToSpawn = nullptr;
+	AGridNodeActorBase* NewActor = nullptr;
 	switch (CurrentPlacementType)
 	{
 		case EGridActorType::Start:
 			if (StartNode) StartNode->Destroy();
-			ClassToSpawn = StartNodeClass;
+			//ClassToSpawn = StartNodeClass;
+			NodePool->GetNodeFromPool(EGridActorType::Start, NewActor);
 			break;
 		case EGridActorType::Goal:
 			if (GoalNode) GoalNode->Destroy();
-			ClassToSpawn = GoalNodeClass;
+			//ClassToSpawn = GoalNodeClass;
+			NodePool->GetNodeFromPool(EGridActorType::Goal, NewActor);
 			break;
 		case EGridActorType::Wall:
-			ClassToSpawn = WallNodeClass;
+			//ClassToSpawn = WallNodeClass;
+			NodePool->GetNodeFromPool(EGridActorType::Wall, NewActor);
 			break;
 		default:
 			break;
 	}
 	
-	AGridNodeActorBase* NewActor = SpawnNodeActorAtCell(ClassToSpawn, GridX, GridY);
+	//AGridNodeActorBase* NewActor = SpawnNodeActorAtCell(ClassToSpawn, GridX, GridY);
+	MoveNodeToPostition(NewActor, GridX, GridY);
+
+
 	if (!NewActor) return false;
 
 	switch (CurrentPlacementType)
@@ -270,6 +278,15 @@ void AGridManager::RemoveExistingNodeActorAtCell(int32 X, int32 Y)
 	}
 }
 
+void AGridManager::MoveNodeToPostition(AGridNodeActorBase* NodeActor, int32 X, int32 Y)
+{
+	FVector NewLocation = GetWorldPositionFromCell(X, Y);
+	FTransform SpawnTransform(FRotator::ZeroRotator, NewLocation);
+	NodeActor->SetActorLocation(NewLocation);
+	NodeActor->GridX = X;
+	NodeActor->GridY = Y;
+}
+
 AGridNodeActorBase* AGridManager::SpawnNodeActorAtCell(TSubclassOf<AGridNodeActorBase> ActorClass, int32 X, int32 Y)
 {
 	if(!ActorClass || !GetWorld())
@@ -308,7 +325,12 @@ void AGridManager::SpawnPathNode(int32 X, int32 Y, bool bisFinalPath)
 	FVector Location = GetWorldPositionFromCell(X, Y);
 	FTransform SpawnTransform(FRotator::ZeroRotator, Location);
 
-	if (APathNodeActor* NewNode = GetWorld()->SpawnActor<APathNodeActor>(PathNodeClass, SpawnTransform))
+	AGridNodeActorBase* Node = NodePool->GetNodeFromPool(EGridActorType::Path);
+	MoveNodeToPostition(Node, X, Y);
+
+	//if (APathNodeActor* NewNode = GetWorld()->SpawnActor<APathNodeActor>(PathNodeClass, SpawnTransform))
+	//{
+	if (APathNodeActor* NewNode = Cast<APathNodeActor>(Node))
 	{
 		NewNode->GridX = X;
 		NewNode->GridY = Y;

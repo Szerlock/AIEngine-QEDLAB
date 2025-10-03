@@ -13,10 +13,15 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGridChanged);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPathUpdated, const TArray<FVector>&, Path, const TArray<FVector>&, ExploredNodes);
 
 struct FGridNode;
+class NodePooling;
 UCLASS()
 class AIENGINE_API AGridManager : public AActor
 {
 	GENERATED_BODY()
+
+	NodePooling* NodePool;
+
+	void MoveNodeToPostition(AGridNodeActorBase* NodeActor, int32 X, int32 Y);
 
 public:
 	AGridManager();
