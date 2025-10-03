@@ -3,8 +3,10 @@
 
 #include "GridManager.h"
 #include "DrawDebugHelpers.h"
+#include "NodeActors/PathNodeActor.h"
+#include "NodeActors/NodePooling.h"
+#include "Kismet/GameplayStatics.h"
 #include "AStarPathFinding.h"
-#include "AStarPathFinding/NodeACtors/NodePooling.h"
 
 AGridManager::AGridManager()
 	: GridSizeX(DEFAULT_GRID_SIZE)
@@ -120,12 +122,12 @@ bool AGridManager::ToggleNodeActorInGrid(const FVector& WorldPosition)
 	switch (CurrentPlacementType)
 	{
 		case EGridActorType::Start:
-			if (StartNode) StartNode->Destroy();
+			//if (StartNode) StartNode->Destroy();
 			//ClassToSpawn = StartNodeClass;
 			NodePool->GetNodeFromPool(EGridActorType::Start, NewActor);
 			break;
 		case EGridActorType::Goal:
-			if (GoalNode) GoalNode->Destroy();
+			//if (GoalNode) GoalNode->Destroy();
 			//ClassToSpawn = GoalNodeClass;
 			NodePool->GetNodeFromPool(EGridActorType::Goal, NewActor);
 			break;
@@ -138,6 +140,11 @@ bool AGridManager::ToggleNodeActorInGrid(const FVector& WorldPosition)
 	}
 	
 	//AGridNodeActorBase* NewActor = SpawnNodeActorAtCell(ClassToSpawn, GridX, GridY);
+	if (!NewActor)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Pooling Failed"));
+		return false;
+	}
 	MoveNodeToPostition(NewActor, GridX, GridY);
 
 
@@ -160,7 +167,14 @@ bool AGridManager::ToggleNodeActorInGrid(const FVector& WorldPosition)
 	}
 
 	OnGridChanged.Broadcast();
-	UpdatePathFinding();
+	if (bUseAsyncPathFinding)
+	{
+		UpdatePathFindingAsync();
+	}
+	else
+	{
+		UpdatePathFinding();
+	}
 	return true;
 }
 
@@ -169,6 +183,7 @@ void AGridManager::BeginPlay()
 	Super::BeginPlay();
 	GridOrigin = GetActorLocation();
 	GridOrigin = FVector::ZeroVector;	
+	NodePool = Cast<ANodePooling>(UGameplayStatics::GetActorOfClass(GetWorld(), ANodePooling::StaticClass()));
 	Initialize();
 	DrawGrid();
 }
@@ -259,20 +274,21 @@ void AGridManager::RemoveExistingNodeActorAtCell(int32 X, int32 Y)
 {
 	if (StartNode && StartNode->GridX == X && StartNode->GridY == Y)
 	{
-		StartNode->Destroy();
+		//StartNode->Destroy();
 		StartNode = nullptr;
 		return;
 	}
 	if (GoalNode && GoalNode->GridX == X && GoalNode->GridY == Y)
 	{
-		GoalNode->Destroy();
+		//GoalNode->Destroy();
 		GoalNode = nullptr;
 		return;
 	}
 	FIntPoint Point(X, Y);
 	if (AGridNodeActorBase* ExistingWall = WallNodes.FindRef(Point))
 	{
-		ExistingWall->Destroy();
+		//ExistingWall->Destroy();
+		NodePool->ReturnWallNode(ExistingWall);
 		WallNodes.Remove(Point);
 		GetNode(X, Y).IsCrossable = true;
 	}
@@ -325,26 +341,35 @@ void AGridManager::SpawnPathNode(int32 X, int32 Y, bool bisFinalPath)
 	FVector Location = GetWorldPositionFromCell(X, Y);
 	FTransform SpawnTransform(FRotator::ZeroRotator, Location);
 
-	AGridNodeActorBase* Node = NodePool->GetNodeFromPool(EGridActorType::Path);
+	AGridNodeActorBase* Node;
+	NodePool->GetNodeFromPool(EGridActorType::Path, Node);
+	if (!Node)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("PathNodePoolingFailed"));
+		return;
+	}
 	MoveNodeToPostition(Node, X, Y);
 
-	//if (APathNodeActor* NewNode = GetWorld()->SpawnActor<APathNodeActor>(PathNodeClass, SpawnTransform))
-	//{
-	if (APathNodeActor* NewNode = Cast<APathNodeActor>(Node))
+	if (Node)
 	{
-		NewNode->GridX = X;
-		NewNode->GridY = Y;
-		NewNode->SetPathNodeType(bisFinalPath);
-		PathNodes.Add(Point, NewNode);
+		if (APathNodeActor* NewNode = Cast<APathNodeActor>(Node))
+		{
+			NewNode->GridX = X;
+			NewNode->GridY = Y;
+			NewNode->SetPathNodeType(bisFinalPath);
+			PathNodes.Add(Point, NewNode);
+		}
 	}
 }
+
 void AGridManager::ClearPathNodes()
 {
 	for (auto& Pair : PathNodes)
 	{
 		if (Pair.Value)
 		{
-			Pair.Value->Destroy();
+			//Pair.Value->Destroy();
+			NodePool->ReturnPathNode(Pair.Value);
 		}
 	}
 	PathNodes.Empty();
@@ -361,6 +386,8 @@ void AGridManager::UpdatePathFinding()
 		return;
 	}
 
+	double StartTime = FPlatformTime::Seconds();
+
 	TArray<FVector> ExploredPositions;
 	CurrentPath = AStarPathFinding::ComputePath(
 		Grid,
@@ -373,6 +400,9 @@ void AGridManager::UpdatePathFinding()
 		CellSize,
 		ExploredNodes
 	);
+
+	GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Green, FString::Printf(TEXT("Pathfinding took %.6f seconds"), FPlatformTime::Seconds() - StartTime));
+
 
 	for (const auto& ExploredPos : ExploredNodes)
 	{
@@ -392,7 +422,84 @@ void AGridManager::UpdatePathFinding()
 		}
 	}
 
+	GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Green, FString::Printf(TEXT("Total Normal Pathfinding took %.6f seconds"), FPlatformTime::Seconds() - StartTime));
+
 	OnPathUpdated.Broadcast(CurrentPath, ExploredNodes);
+}
+
+void AGridManager::UpdatePathFindingAsync()
+{
+	if (!StartNode || !GoalNode)
+	{
+		return;
+	}
+
+
+	TWeakObjectPtr<AGridManager> WeakThis(this);
+
+	TArray<FGridNode>* GridPtr = &Grid;
+	int32 GridXCopy = GridSizeX;
+	int32 GridYCopy = GridSizeY;
+	int32 StartXCopy = StartNode->GridX;
+	int32 StartYCopy = StartNode->GridY;
+	int32 GoalXCopy = GoalNode->GridX;
+	int32 GoalYCopy = GoalNode->GridY;
+	float CellSizeCopy = CellSize;
+
+	double StartTimeTotal = FPlatformTime::Seconds();
+
+	Async(EAsyncExecution::Thread, [GridPtr, GridXCopy, GridYCopy, StartXCopy, StartYCopy, GoalXCopy, GoalYCopy, CellSizeCopy, WeakThis, StartTimeTotal]()
+	{
+		double StartTimeThread = FPlatformTime::Seconds();
+		TArray<FGridNode> LocalGridCopy = *GridPtr;
+
+		TArray<FVector> AsyncExploredNodes;
+		TArray<FVector> AsyncPath = AStarPathFinding::ComputePath(
+			LocalGridCopy,
+			GridXCopy,
+			GridYCopy,
+			StartXCopy,
+			StartYCopy,
+			GoalXCopy,
+			GoalYCopy,
+			CellSizeCopy,
+			AsyncExploredNodes
+		);
+
+		GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Green, FString::Printf(TEXT("Async Pathfinding computation took %.6f seconds"), FPlatformTime::Seconds() - StartTimeThread));
+
+		Async(EAsyncExecution::TaskGraphMainThread, [AsyncPath, AsyncExploredNodes, WeakThis, StartTimeTotal]()
+			{
+				double MergeTime = FPlatformTime::Seconds();
+				if (AGridManager* GridManager = WeakThis.Get())
+				{
+					GridManager->ClearPathNodes();
+					GridManager->CurrentPath = AsyncPath;
+					GridManager->ExploredNodes = AsyncExploredNodes;
+
+					for (const auto& ExploredPos : AsyncExploredNodes)
+					{
+						int32 X, Y;
+						if (GridManager->GetCellFromWorldPosition(ExploredPos, X, Y))
+						{
+							GridManager->SpawnPathNode(X, Y, false);
+						}
+					}
+
+					for (const auto& PathPos : AsyncPath)
+					{
+						int32 X, Y;
+						if (GridManager->GetCellFromWorldPosition(PathPos, X, Y))
+						{
+							GridManager->SpawnPathNode(X, Y, true);
+						}
+					}
+
+					GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Green, FString::Printf(TEXT("Async Pathfinding total update took %.6f seconds"), MergeTime - StartTimeTotal));
+					GridManager->OnPathUpdated.Broadcast(GridManager->CurrentPath, GridManager->ExploredNodes);
+				}
+			});
+	});
 }
 
 void AGridManager::DrawGrid()

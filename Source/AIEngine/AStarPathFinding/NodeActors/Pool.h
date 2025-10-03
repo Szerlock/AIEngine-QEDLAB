@@ -5,13 +5,13 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "GridNodeActorBase.h"
-#include "NodePooling.generated.h"
+#include "Pool.generated.h"
 
 UCLASS()
-class AIENGINE_API ANodePooling : public AActor
+class AIENGINE_API APool : public AActor
 {
 	GENERATED_BODY()
-
+	
 	UPROPERTY(EditDefaultsOnly, Category = "Nodes")
 	TSubclassOf<AGridNodeActorBase> StartNodeClass;
 	UPROPERTY(EditDefaultsOnly, Category = "Nodes")
@@ -20,12 +20,14 @@ class AIENGINE_API ANodePooling : public AActor
 	TSubclassOf<AGridNodeActorBase> WallNodeClass;
 	UPROPERTY(EditDefaultsOnly, Category = "Nodes")
 	TSubclassOf<AGridNodeActorBase> PathNodeClass;
-	
+
 	UPROPERTY(EditAnywhere)
 	int32 PoolSize;
-	
+
 	UPROPERTY(EditAnywhere)
 	int32 IncrementPoolSize;
+
+
 
 
 	TQueue<AGridNodeActorBase*> WallPool;
@@ -41,25 +43,9 @@ class AIENGINE_API ANodePooling : public AActor
 
 public:	
 	// Sets default values for this actor's properties
-	ANodePooling();
+	APool();
 
 	void GetNodeFromPool(EGridActorType NodeType, AGridNodeActorBase*& OutNode);
-	void ReturnWallNode(AGridNodeActorBase* Node)
-	{ 
-		WallPool.Enqueue(Node); 
-		if (Node)
-		{
-			Node->SetActorHiddenInGame(true);
-		}
-	}
-	void ReturnPathNode(AGridNodeActorBase* Node) 
-	{ 
-		PathPool.Enqueue(Node);
-		if (Node)
-		{
-			Node->SetActorHiddenInGame(true);
-		}
-	}
 
 protected:
 	// Called when the game starts or when spawned

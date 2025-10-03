@@ -25,21 +25,21 @@ public class AIEngine : ModuleRules
 
 		PublicIncludePaths.AddRange(new string[] {
 			"AIEngine",
-			"AIEngine/Variant_Platforming",
-			"AIEngine/Variant_Platforming/Animation",
-			"AIEngine/Variant_Combat",
-			"AIEngine/Variant_Combat/AI",
-			"AIEngine/Variant_Combat/Animation",
-			"AIEngine/Variant_Combat/Gameplay",
-			"AIEngine/Variant_Combat/Interfaces",
-			"AIEngine/Variant_Combat/UI",
-			"AIEngine/Variant_SideScrolling",
-			"AIEngine/Variant_SideScrolling/AI",
-			"AIEngine/Variant_SideScrolling/Gameplay",
-			"AIEngine/Variant_SideScrolling/Interfaces",
-			"AIEngine/Variant_SideScrolling/UI",
-			"AIEngine/AStarPathFinding"
-		});
+			 "AIEngine/Variant_Platforming",
+			 "AIEngine/Variant_Platforming/Animation",
+			 "AIEngine/Variant_Combat",
+			 "AIEngine/Variant_Combat/AI",
+			 "AIEngine/Variant_Combat/Animation",
+			 "AIEngine/Variant_Combat/Gameplay",
+			 "AIEngine/Variant_Combat/Interfaces",
+			 "AIEngine/Variant_Combat/UI",
+			 "AIEngine/Variant_SideScrolling",
+			 "AIEngine/Variant_SideScrolling/AI",
+			 "AIEngine/Variant_SideScrolling/Gameplay",
+			 "AIEngine/Variant_SideScrolling/Interfaces",
+			 "AIEngine/Variant_SideScrolling/UI",
+			"AIEngine/AStarPathFinding",
+        });
 
 		// Uncomment if you are using Slate UI
 		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });

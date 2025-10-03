@@ -5,27 +5,31 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "GridNodeActorBase.h"
-#include "NodeActors/PathNodeActor.h"
 #include "GridManager.generated.h"
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGridChanged);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPathUpdated, const TArray<FVector>&, Path, const TArray<FVector>&, ExploredNodes);
 
+
 struct FGridNode;
-class NodePooling;
+class ANodePooling;
 UCLASS()
 class AIENGINE_API AGridManager : public AActor
 {
 	GENERATED_BODY()
 
-	NodePooling* NodePool;
+	ANodePooling* NodePool;
 
 	void MoveNodeToPostition(AGridNodeActorBase* NodeActor, int32 X, int32 Y);
+	void UpdatePathFindingAsync();
+
 
 public:
 	AGridManager();
 
+	UPROPERTY(EditAnywhere)
+	bool bUseAsyncPathFinding;
 
 	static bool StaticIsValidPos(int32 X, int32 Y, int32 GridSizeX, int32 GridSizeY);
 	static int32 StaticGetIndexFromXY(int32 X, int32 Y, int32 GridSizeX);
