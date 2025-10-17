@@ -3,11 +3,19 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include <mutex>
+#include <unordered_set>
 #include "AStarPathfinding/GridNode.h"
 
 /**
  *
  */
+
+struct FClosedListPartition
+{
+    std::mutex Lock;                     
+    std::unordered_set<int> ExploredNodes; // Stores explored node indices
+};
 
 class AIENGINE_API AStarPathFinding
 {
@@ -15,7 +23,19 @@ class AIENGINE_API AStarPathFinding
 public:
     static constexpr int32 STRAIGHT_COST = 10;
     static constexpr int32 DIAGONAL_COST = 14;
+    static const int NUM_PARTITIONS = 16; 
 
+    static TArray<FClosedListPartition> ClosedListPartitions;
+    static std::vector<std::thread> Threads;
+
+
+    static int32 HashNode(int x, int y, int GridSizeX);
+
+    static void SetPartitioning(bool bUsePartition)
+    {
+        bPartition = bUsePartition;
+	}
+    
     struct FPathNode
     {
         int32 X;
@@ -44,6 +64,9 @@ public:
     );
 
 private:
+
+    inline static bool bPartition = false;
+
     static const TArray<TPair<int32, int32>> Directions;
 
     // Init Methods
@@ -68,6 +91,19 @@ private:
     static FPathNode* FindNodeWithLowestCost(TArray<FPathNode*>& NodesToExplore);
 
     static bool IsGoalNode(const FPathNode* Node, int32 GoalX, int32 GoalY);
+
+    static bool ProcessNeighborNode(
+        const TPair<int32, int32>& Direction,
+        FPathNode* CurrentNode,
+        TArray<FPathNode>& PathNodes,
+        const TArray<FGridNode>& Grid,
+        int32 GridSizeX,
+        int32 GridSizeY,
+        int32 GoalX,
+        int32 GoalY,
+        TArray<FPathNode*>& NodesToExplore,
+		std::mutex& NodesMutex
+    );
 
     static bool ProcessNeighborNode(
         const TPair<int32, int32>& Direction,

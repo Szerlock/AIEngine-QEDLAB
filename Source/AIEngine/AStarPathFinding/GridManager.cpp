@@ -377,6 +377,7 @@ void AGridManager::ClearPathNodes()
 
 void AGridManager::UpdatePathFinding()
 {
+
 	ClearPathNodes();
 	CurrentPath.Empty();
 	ExploredNodes.Empty();
@@ -385,6 +386,8 @@ void AGridManager::UpdatePathFinding()
 	{
 		return;
 	}
+
+	AStarPathFinding::SetPartitioning(bParrallelAStar);
 
 	double StartTime = FPlatformTime::Seconds();
 

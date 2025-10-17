@@ -10,10 +10,22 @@ const TArray<TPair<int32, int32>> AStarPathFinding::Directions =
 	{0, 1}, {-1, 0}, {1, 0}, {0, -1}
 };
 
+TArray<FClosedListPartition> AStarPathFinding::ClosedListPartitions = []() {
+	TArray<FClosedListPartition> Partitions;
+	Partitions.SetNum(AStarPathFinding::NUM_PARTITIONS);
+	return Partitions;
+	}();
+
+int32 AStarPathFinding::HashNode(int x, int y, int GridSizeX)
+{
+	int nodeIndex = y * GridSizeX + x;
+	return nodeIndex % NUM_PARTITIONS;
+}
+
 TArray<FVector> AStarPathFinding::ComputePath(const TArray<FGridNode>& Grid, int32 GridSizeX, int32 GridSizeY, int32 StartX, int32 StartY, int32 GoalX, int32 GoalY, float CellSize, TArray<FVector>& OutExploredNodes)
 {
 	OutExploredNodes.Empty();
-
+	
 	if (!ValidateInputs(StartX, StartY, GoalX, GoalY, GridSizeX, GridSizeY))
 	{
 		return TArray<FVector>(); // Invalid path so return empty path
@@ -55,9 +67,30 @@ TArray<FVector> AStarPathFinding::ComputePath(const TArray<FGridNode>& Grid, int
 
 		CurrentNode->IsExplored = true;
 
-		for (const auto& Direction : Directions)
+		if (bPartition)
 		{
-			ProcessNeighborNode(Direction, CurrentNode, PathNodes, Grid, GridSizeX, GridSizeY, GoalX, GoalY, NodesToExplore);
+			std::vector<std::thread> NeighborThreads;
+			std::mutex NodesMutex;
+
+			for (const auto& Direction : Directions)
+			{
+				NeighborThreads.emplace_back([&, Direction]()
+					{
+						ProcessNeighborNode(Direction, CurrentNode, PathNodes, Grid, GridSizeX, GridSizeY, GoalX, GoalY, NodesToExplore, NodesMutex);
+					});
+			}
+
+			for (auto& t : NeighborThreads)
+			{
+				if (t.joinable()) t.join();
+			}
+		}
+		else
+		{
+			for (const auto& Direction : Directions)
+			{
+				ProcessNeighborNode(Direction, CurrentNode, PathNodes, Grid, GridSizeX, GridSizeY, GoalX, GoalY, NodesToExplore);
+			}
 		}
 	}
 
@@ -132,8 +165,10 @@ bool AStarPathFinding::IsGoalNode(const FPathNode* Node, int32 GoalX, int32 Goal
 
 bool AStarPathFinding::ProcessNeighborNode(const TPair<int32, int32>& Direction, FPathNode* CurrentNode, TArray<FPathNode>& PathNodes, const TArray<FGridNode>& Grid, int32 GridSizeX, int32 GridSizeY, int32 GoalX, int32 GoalY, TArray<FPathNode*>& NodesToExplore)
 {
+
 	const int32 NeighborX = CurrentNode->X + Direction.Key;
-	const int32 NeighborY = CurrentNode->Y + Direction.Value;
+	const int32 NeighborY = CurrentNode->Y + Direction.Value; 
+
 
 	if (!AGridManager::StaticIsValidPos(NeighborX, NeighborY, GridSizeX, GridSizeY) ||
 		!IsNodeCrossable(Grid, GridSizeX, NeighborX, NeighborY))
@@ -157,6 +192,44 @@ bool AStarPathFinding::ProcessNeighborNode(const TPair<int32, int32>& Direction,
 	}
 
 	return false;
+}
+
+bool AStarPathFinding::ProcessNeighborNode(const TPair<int32, int32>& Direction, FPathNode* CurrentNode, TArray<FPathNode>& PathNodes, const TArray<FGridNode>& Grid, int32 GridSizeX, int32 GridSizeY, int32 GoalX, int32 GoalY, TArray<FPathNode*>& NodesToExplore, std::mutex& NodesMutex)
+{
+
+	const int32 NeighborX = CurrentNode->X + Direction.Key;
+	const int32 NeighborY = CurrentNode->Y + Direction.Value;
+
+	if (!AGridManager::StaticIsValidPos(NeighborX, NeighborY, GridSizeX, GridSizeY))
+		return false;
+
+	int neighborIndex = AGridManager::StaticGetIndexFromXY(NeighborX, NeighborY, GridSizeX);
+	if (neighborIndex < 0 || neighborIndex >= PathNodes.Num())
+		return false;
+
+	FPathNode& NeighborNode = PathNodes[neighborIndex];
+
+	int partitionIndex = HashNode(NeighborX, NeighborY, GridSizeX);
+	if (partitionIndex < 0 || partitionIndex >= ClosedListPartitions.Num())
+		return false;
+
+	FClosedListPartition& partition = ClosedListPartitions[partitionIndex];
+
+	std::lock_guard<std::mutex> partitionGuard(partition.Lock);
+	if (partition.ExploredNodes.find(neighborIndex) != partition.ExploredNodes.end())
+		return false;
+
+	partition.ExploredNodes.insert(neighborIndex);
+	NeighborNode.IsExplored = true;
+
+	{
+		std::lock_guard<std::mutex> nodesGuard(NodesMutex);
+		UpdateNeighborNode(NeighborNode, CurrentNode,
+			CurrentNode->CostFromStart + STRAIGHT_COST,
+			GoalX, GoalY, NodesToExplore);
+	}
+
+	return true	;
 }
 
 void AStarPathFinding::UpdateNeighborNode(FPathNode& NeighborNode, FPathNode* CurrentNode, int32 NewCostFromStart, int32 GoalX, int32 GoalY, TArray<FPathNode*>& NodesToExplore)
