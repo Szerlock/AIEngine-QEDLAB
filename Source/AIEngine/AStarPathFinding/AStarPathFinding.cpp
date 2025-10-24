@@ -2,6 +2,10 @@
 
 
 #include "AStarPathFinding.h"
+#include <queue>
+#include <mutex>
+#include <functional>
+#include "Async/Async.h"
 #include "GridManager.h"
 
 
@@ -24,77 +28,10 @@ int32 AStarPathFinding::HashNode(int x, int y, int GridSizeX)
 
 TArray<FVector> AStarPathFinding::ComputePath(const TArray<FGridNode>& Grid, int32 GridSizeX, int32 GridSizeY, int32 StartX, int32 StartY, int32 GoalX, int32 GoalY, float CellSize, TArray<FVector>& OutExploredNodes)
 {
-	OutExploredNodes.Empty();
-	
-	if (!ValidateInputs(StartX, StartY, GoalX, GoalY, GridSizeX, GridSizeY))
-	{
-		return TArray<FVector>(); // Invalid path so return empty path
-	}
-
-	TArray<FPathNode> PathNodes;
-	InitializePathNodes(PathNodes, GridSizeX, GridSizeY);
-
-	TArray<FPathNode*> NodesToExplore;
-	SetupStartNode(PathNodes, NodesToExplore, StartX, StartY, GoalX, GoalY, GridSizeX);
-
-	const int32 MaxIterations = GridSizeX * GridSizeY;
-	int32 IterationCount = 0;
-
-	while (!NodesToExplore.IsEmpty())
-	{
-		if (++IterationCount > MaxIterations)
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("PathFinder : Maximum iterations reached, path not found"));
-			return TArray<FVector>(); // return empty path
-		}
-
-		FPathNode* CurrentNode = FindNodeWithLowestCost(NodesToExplore);
-
-		if (!CurrentNode->IsExplored)
-		{
-			const FVector WorldPos(
-				(CurrentNode->X + 0.5f) * CellSize,
-				(CurrentNode->Y + 0.5f) * CellSize,
-				0.0f
-			);
-			OutExploredNodes.Add(WorldPos);
-		}
-
-		if (IsGoalNode(CurrentNode, GoalX, GoalY))
-		{
-			return ReconstructPath(CurrentNode, CellSize);
-		}
-
-		CurrentNode->IsExplored = true;
-
-		if (bPartition)
-		{
-			std::vector<std::thread> NeighborThreads;
-			std::mutex NodesMutex;
-
-			for (const auto& Direction : Directions)
-			{
-				NeighborThreads.emplace_back([&, Direction]()
-					{
-						ProcessNeighborNode(Direction, CurrentNode, PathNodes, Grid, GridSizeX, GridSizeY, GoalX, GoalY, NodesToExplore, NodesMutex);
-					});
-			}
-
-			for (auto& t : NeighborThreads)
-			{
-				if (t.joinable()) t.join();
-			}
-		}
-		else
-		{
-			for (const auto& Direction : Directions)
-			{
-				ProcessNeighborNode(Direction, CurrentNode, PathNodes, Grid, GridSizeX, GridSizeY, GoalX, GoalY, NodesToExplore);
-			}
-		}
-	}
-
-	return TArray<FVector>(); // No path
+	if (bPartition)
+		return ComputePath_Partitioned(Grid, GridSizeX, GridSizeY, StartX, StartY, GoalX, GoalY, CellSize, OutExploredNodes);
+	else
+		return ComputePath_Sequential(Grid, GridSizeX, GridSizeY, StartX, StartY, GoalX, GoalY, CellSize, OutExploredNodes);
 }
 
 bool AStarPathFinding::ValidateInputs(int32 StartX, int32 StartY, int32 GoalX, int32 GoalY, int32 GridSizeX, int32 GridSizeY)
@@ -291,5 +228,190 @@ TArray<FVector> AStarPathFinding::ReconstructPath(FPathNode* EndNode, float Cell
 	}
 
 	return Path;
+}
+
+TArray<FVector> AStarPathFinding::ComputePath_Sequential(
+	const TArray<FGridNode>& Grid, int32 GridSizeX, int32 GridSizeY,
+	int32 StartX, int32 StartY, int32 GoalX, int32 GoalY,
+	float CellSize, TArray<FVector>& OutExploredNodes)
+{
+	OutExploredNodes.Empty();
+
+	if (!ValidateInputs(StartX, StartY, GoalX, GoalY, GridSizeX, GridSizeY))
+	{
+		return TArray<FVector>(); // Invalid path so return empty path
+	}
+
+	TArray<FPathNode> PathNodes;
+	InitializePathNodes(PathNodes, GridSizeX, GridSizeY);
+
+	TArray<FPathNode*> NodesToExplore;
+	SetupStartNode(PathNodes, NodesToExplore, StartX, StartY, GoalX, GoalY, GridSizeX);
+
+	const int32 MaxIterations = GridSizeX * GridSizeY;
+	int32 IterationCount = 0;
+
+	while (!NodesToExplore.IsEmpty())
+	{
+		if (++IterationCount > MaxIterations)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("PathFinder: Maximum iterations reached, path not found"));
+			return TArray<FVector>();
+		}
+
+		FPathNode* CurrentNode = FindNodeWithLowestCost(NodesToExplore);
+
+		if (!CurrentNode->IsExplored)
+		{
+			const FVector WorldPos(
+				(CurrentNode->X + 0.5f) * CellSize,
+				(CurrentNode->Y + 0.5f) * CellSize,
+				0.0f);
+			OutExploredNodes.Add(WorldPos);
+		}
+
+		if (IsGoalNode(CurrentNode, GoalX, GoalY))
+		{
+			return ReconstructPath(CurrentNode, CellSize);
+		}
+
+		CurrentNode->IsExplored = true;
+
+		for (const auto& Direction : Directions)
+		{
+			ProcessNeighborNode(Direction, CurrentNode, PathNodes, Grid,
+				GridSizeX, GridSizeY, GoalX, GoalY, NodesToExplore);
+		}
+	}
+
+	return TArray<FVector>();
+}
+
+
+TArray<FVector> AStarPathFinding::ComputePath_Partitioned(
+	const TArray<FGridNode>& Grid, int32 GridSizeX, int32 GridSizeY,
+	int32 StartX, int32 StartY, int32 GoalX, int32 GoalY,
+	float CellSize, TArray<FVector>& OutExploredNodes)
+{
+	OutExploredNodes.Empty();
+
+	if (!ValidateInputs(StartX, StartY, GoalX, GoalY, GridSizeX, GridSizeY))
+		return {};
+
+	// --- Reset closed partitions ---
+	for (FClosedListPartition& P : ClosedListPartitions)
+	{
+		std::lock_guard<std::mutex> L(P.Lock);
+		P.ExploredNodes.clear();
+	}
+
+	TArray<FPathNode> PathNodes;
+	InitializePathNodes(PathNodes, GridSizeX, GridSizeY);
+
+
+	// --- Thread-safe open list (min-heap) ---
+	auto CompareNodes = [](FPathNode* A, FPathNode* B) { return A->GetTotalCost() > B->GetTotalCost(); };
+	std::priority_queue<FPathNode*, std::vector<FPathNode*>, decltype(CompareNodes)> OpenList(CompareNodes);
+	std::mutex OpenListMutex;
+
+	// Setup start node
+	FPathNode& StartNode = PathNodes[AGridManager::StaticGetIndexFromXY(StartX, StartY, GridSizeX)];
+	StartNode.CostFromStart = 0;
+	StartNode.EstimatedCostToGoal = CalculateDistanceToGoal(StartX, StartY, GoalX, GoalY);
+
+	{
+		std::lock_guard<std::mutex> Lock(OpenListMutex);
+		OpenList.push(&StartNode);
+	}
+
+	const int32 MaxIterations = GridSizeX * GridSizeY;
+	int32 IterationCount = 0;
+
+	while (true)
+	{
+		FPathNode* CurrentNode = nullptr;
+		{
+			std::lock_guard<std::mutex> Lock(OpenListMutex);
+			if (OpenList.empty()) break;
+			CurrentNode = OpenList.top();
+			OpenList.pop();
+		}
+
+		if (++IterationCount > MaxIterations)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("A* exceeded max iterations"));
+			return {};
+		}
+
+		int32 NodeIndex = AGridManager::StaticGetIndexFromXY(CurrentNode->X, CurrentNode->Y, GridSizeX);
+		int32 PartitionIndex = HashNode(CurrentNode->X, CurrentNode->Y, GridSizeX);
+		FClosedListPartition& Partition = ClosedListPartitions[PartitionIndex];
+
+		{
+			std::lock_guard<std::mutex> Lock(Partition.Lock);
+			if (Partition.ExploredNodes.contains(NodeIndex))
+				continue;
+			Partition.ExploredNodes.insert(NodeIndex);
+		}
+
+		// Visualize exploration
+		if (!CurrentNode->IsExplored)
+		{
+			const FVector WorldPos((CurrentNode->X + 0.5f) * CellSize, (CurrentNode->Y + 0.5f) * CellSize, 0.0f);
+			OutExploredNodes.Add(WorldPos);
+		}
+
+		if (IsGoalNode(CurrentNode, GoalX, GoalY))
+			return ReconstructPath(CurrentNode, CellSize);
+
+		CurrentNode->IsExplored = true;
+
+		// --- Process neighbors sequentially ---
+		TArray<FPathNode*> ToAdd;
+		ToAdd.Reserve(8);
+
+		for (const auto& Dir : Directions)
+		{
+			int32 NX = CurrentNode->X + Dir.Key;
+			int32 NY = CurrentNode->Y + Dir.Value;
+
+			if (!AGridManager::StaticIsValidPos(NX, NY, GridSizeX, GridSizeY))
+				continue;
+
+			int32 NI = AGridManager::StaticGetIndexFromXY(NX, NY, GridSizeX);
+			if (NI < 0 || NI >= Grid.Num()) continue;
+			if (!Grid[NI].IsCrossable) continue;
+
+			int32 PIdx = HashNode(NX, NY, GridSizeX);
+			FClosedListPartition& NPart = ClosedListPartitions[PIdx];
+
+			{
+				std::lock_guard<std::mutex> Lock(NPart.Lock);
+				if (NPart.ExploredNodes.contains(NI))
+					continue;
+			}
+
+			FPathNode& Neighbor = PathNodes[NI];
+			int32 NewCost = CurrentNode->CostFromStart + STRAIGHT_COST;
+
+			if (NewCost < Neighbor.CostFromStart)
+			{
+				Neighbor.CostFromStart = NewCost;
+				Neighbor.EstimatedCostToGoal = CalculateDistanceToGoal(NX, NY, GoalX, GoalY);
+				Neighbor.PreviousNode = CurrentNode;
+				ToAdd.Add(&Neighbor);
+			}
+		}
+
+		// Push all at once to reduce lock overhead
+		if (ToAdd.Num() > 0)
+		{
+			std::lock_guard<std::mutex> Lock(OpenListMutex);
+			for (FPathNode* N : ToAdd)
+				OpenList.push(N);
+		}
+	}
+
+	return TArray<FVector>();
 }
 

@@ -133,4 +133,14 @@ private:
     static bool IsNodeCrossable(const TArray<FGridNode>& Grid, int32 GridSizeX, int32 X, int32 Y);
 
     static TArray<FVector> ReconstructPath(FPathNode* EndNode, float CellSize);
+
+    static TArray<FVector> ComputePath_Sequential(
+        const TArray<FGridNode>& Grid, int32 GridSizeX, int32 GridSizeY,
+        int32 StartX, int32 StartY, int32 GoalX, int32 GoalY,
+        float CellSize, TArray<FVector>& OutExploredNodes);
+
+	static TArray<FVector> ComputePath_Partitioned(
+        const TArray<FGridNode>& Grid, int32 GridSizeX, int32 GridSizeY,
+        int32 StartX, int32 StartY, int32 GoalX, int32 GoalY,
+		float CellSize, TArray<FVector>& OutExploredNodes);
 };
