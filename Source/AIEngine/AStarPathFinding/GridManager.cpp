@@ -401,7 +401,8 @@ void AGridManager::UpdatePathFinding()
 		GoalNode->GridX,
 		GoalNode->GridY,
 		CellSize,
-		ExploredNodes
+		ExploredNodes,
+		NumThreads
 	);
 
 	GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Green, FString::Printf(TEXT("Pathfinding took %.6f seconds"), FPlatformTime::Seconds() - StartTime));
@@ -448,10 +449,11 @@ void AGridManager::UpdatePathFindingAsync()
 	int32 GoalXCopy = GoalNode->GridX;
 	int32 GoalYCopy = GoalNode->GridY;
 	float CellSizeCopy = CellSize;
+	int32 NumThreadsCopy = NumThreads;
 
 	double StartTimeTotal = FPlatformTime::Seconds();
 
-	Async(EAsyncExecution::Thread, [GridPtr, GridXCopy, GridYCopy, StartXCopy, StartYCopy, GoalXCopy, GoalYCopy, CellSizeCopy, WeakThis, StartTimeTotal]()
+	Async(EAsyncExecution::Thread, [GridPtr, GridXCopy, GridYCopy, StartXCopy, StartYCopy, GoalXCopy, GoalYCopy, CellSizeCopy, WeakThis, StartTimeTotal, NumThreadsCopy]()
 	{
 		double StartTimeThread = FPlatformTime::Seconds();
 		TArray<FGridNode> LocalGridCopy = *GridPtr;
@@ -466,7 +468,8 @@ void AGridManager::UpdatePathFindingAsync()
 			GoalXCopy,
 			GoalYCopy,
 			CellSizeCopy,
-			AsyncExploredNodes
+			AsyncExploredNodes,
+			NumThreadsCopy
 		);
 
 		GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Green, FString::Printf(TEXT("Async Pathfinding computation took %.6f seconds"), FPlatformTime::Seconds() - StartTimeThread));

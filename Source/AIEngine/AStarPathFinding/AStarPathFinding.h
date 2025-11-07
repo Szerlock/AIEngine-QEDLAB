@@ -60,7 +60,8 @@ public:
         int32 GoalX,
         int32 GoalY,
         float CellSize,
-        TArray<FVector>& OutExploredNodes
+        TArray<FVector>& OutExploredNodes,
+        int32 NumThreads
     );
 
 private:
@@ -142,5 +143,5 @@ private:
 	static TArray<FVector> ComputePath_Partitioned(
         const TArray<FGridNode>& Grid, int32 GridSizeX, int32 GridSizeY,
         int32 StartX, int32 StartY, int32 GoalX, int32 GoalY,
-		float CellSize, TArray<FVector>& OutExploredNodes);
+		float CellSize, TArray<FVector>& OutExploredNodes, int32 NumThreads);
 };

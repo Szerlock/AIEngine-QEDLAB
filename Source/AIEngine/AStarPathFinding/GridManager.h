@@ -32,6 +32,9 @@ public:
 	bool bUseAsyncPathFinding;
 	
 	UPROPERTY(EditAnywhere)
+	int32 NumThreads;
+	
+	UPROPERTY(EditAnywhere)
 	bool bParrallelAStar;
 
 	static bool StaticIsValidPos(int32 X, int32 Y, int32 GridSizeX, int32 GridSizeY);
